@@ -1,0 +1,86 @@
+---
+title: "Initial exploration of party competition in Maryland"
+date: "2016-02-06"
+author: "Lincoln Mullen"
+---
+We've exported all the Congressional county returns. We want to create an initial exploration of the data, to make sure that we get reasonable results. For this notebook, we will create charts of party competition in Maryland, showing how it changed over time.
+
+```{r, message=FALSE}
+library(tidyverse)
+library(stringr)
+library(scales)
+md <- read_csv("elections-data/congressional/county/congressional-counties-md.csv")
+```
+
+First, a chart of overall percentages of votes cast for different parties in Congressional elections. (Note that this is not the same thing as winning elections, but it does give a sense of the overall change in the state.)
+
+```{r}
+md %>%
+  mutate(year = as.integer(str_extract(election_id, "\\d{4}"))) %>%
+  group_by(year, party_id, party) %>%
+  summarize(vote = sum(vote)) %>%
+  group_by(year) %>%
+  mutate(total_vote = sum(vote)) %>%
+  ggplot(aes(x = year, y = vote / total_vote, color = party)) +
+  geom_line() + geom_point() +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Party competition in Maryland",
+       x = NULL, y = "Percentage of vote") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+Next, a chart of the party vote by county. This gives a sense of the geographic differences.
+
+```{r, warning=FALSE, fig.height=12}
+md %>%
+  mutate(year = as.integer(str_extract(election_id, "\\d{4}"))) %>%
+  group_by(year, party_id, party, county) %>%
+  summarize(vote = sum(vote)) %>%
+  group_by(year, county) %>%
+  mutate(total_vote = sum(vote)) %>%
+  ggplot(aes(x = year, y = vote / total_vote, color = party)) +
+  geom_line() + geom_point() +
+  facet_wrap(~county, ncol = 3) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Party competition in Maryland by county",
+       x = NULL, y = "Percentage of vote") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+If we are interested in geographic differences and not just changes in party competition, then we should normalize by the changes in how each party fared. In this chart, 0% indicates that a county voted for a part at exactly the same rate as the rest of Maryland in that election. Plus or minus percentages indicate that a county voted at a higher or lower rate than the rest of Maryland. 
+
+```{r, warning=FALSE, fig.height=12}
+md_percent <- md %>%
+  mutate(year = as.integer(str_extract(election_id, "\\d{4}"))) %>%
+  group_by(year, party_id, party) %>%
+  summarize(vote = sum(vote)) %>%
+  group_by(year) %>%
+  mutate(total_vote = sum(vote)) %>%
+  mutate(md_percentage = vote / total_vote)
+
+md_county <- md %>%
+  mutate(year = as.integer(str_extract(election_id, "\\d{4}"))) %>%
+  group_by(year, party_id, party, county) %>%
+  summarize(vote = sum(vote)) %>%
+  group_by(year, county) %>%
+  mutate(total_vote = sum(vote),
+         county_percentage = vote / total_vote) %>%
+  rename(county_vote = vote)
+
+left_join(md_county, md_percent, by = c("year", "party", "party_id")) %>%
+  mutate(diff_from_state_average = county_percentage - md_percentage) %>%
+  filter(!is.na(party)) %>%
+  ggplot(aes(x = year, y = diff_from_state_average, color = party)) +
+  geom_line() + geom_point() +
+  geom_hline(yintercept = 0) +
+  facet_wrap(~county, ncol = 3) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Party competition in Maryland by county",
+       subtitle = "Normalized by state votes per party",
+       x = NULL, y = "Vote percentage difference from state results") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
