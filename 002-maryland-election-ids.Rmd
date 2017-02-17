@@ -1,0 +1,67 @@
+---
+title: "Compare Martis Districts to NNV IDs for Maryland"
+date: "2016-02-17"
+author: "Lincoln Mullen"
+---
+
+```{r setup, message=FALSE}
+library(tidyverse)
+library(stringr)
+library(USAboundaries)
+```
+
+The aim is to compare the Martis districts from the NSF shapefiles project to the election IDs in the NNV data. In other words, which elections do we actually need to use for each state? We will start with Maryland.
+
+```{r, message=FALSE}
+martis <- read_csv("data-cleaning/data/cdmaps-districts.csv") %>% 
+  filter(statename == "Maryland") %>% 
+  left_join(state_codes, by = c("statename" = "state_name")) %>% 
+  arrange(congress, district)
+elections <- read_csv("elections-data/elections.csv") %>% 
+  filter(state == "MD")
+```
+
+The shapefiles only have Congress numbers, and the NNV data only has election years, so we need to go between them for the join.
+
+```{r}
+guess_election_year <- function(congress_num) {
+  guess <- 1788 + (2 * (congress_num - 1))
+  ifelse(guess == 1800, 1801,
+  ifelse(guess == 1802, 1803, guess))
+}
+guess_election_year(1:10)
+```
+
+From the shapefile data, create an ID column that matches NNV.
+
+
+```{r}
+make_id <- function(state, district, congress) {
+  str_c(state, ".", "uscongress", district, ".", 
+        guess_election_year(congress)) %>% 
+    str_to_lower()
+}
+
+make_id("MD", 5, 3)
+
+martis <- martis %>% 
+  mutate(martis_id = make_id(state_abbr, district, congress)) 
+```
+
+Now in theory we should be able to join the datasets to find which districts we have elections for. Most of the elections are joined successfully.
+
+```{r}
+joined <- martis %>% 
+  full_join(elections, by = c("martis_id" = "election_id")) %>% 
+  select(statename, congress, district.x, district.y, martis_id, everything())
+joined
+```
+
+These are the unsuccessful joins.
+
+```{r}
+joined %>% 
+  filter(is.na(file) | is.na(district.y))
+```
+
+For the first and second congresses in Maryland we have a problem with at large elections, or put more generally, with the election not following our simple model of elections as something that happen within a district. We also have two special elections which have made it through our list. But in general the results are promising outside the first two Congresses.
