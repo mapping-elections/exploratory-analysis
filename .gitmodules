@@ -1,6 +1,6 @@
 [submodule "data-cleaning"]
 	path = data-cleaning
-	url = git@github.com:mapping-elections/data-cleaning.git
+	url = https://github.com/mapping-elections/data-cleaning.git
 [submodule "elections-data"]
 	path = elections-data
-	url = git@github.com:mapping-elections/elections-data.git
+	url = https://github.com/mapping-elections/elections-data.git
