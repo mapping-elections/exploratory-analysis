@@ -3,6 +3,7 @@ title: "Initial exploration of party competition in Maryland"
 date: "2016-02-06"
 author: "Lincoln Mullen"
 ---
+
 We've exported all the Congressional county returns. We want to create an initial exploration of the data, to make sure that we get reasonable results. For this notebook, we will create charts of party competition in Maryland, showing how it changed over time.
 
 ```{r, message=FALSE}
