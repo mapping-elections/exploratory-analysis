@@ -1,0 +1,85 @@
+---
+title: "Map Maryland Congressional Elections"
+output: html_notebook
+---
+
+Simple maps of party percentages in Maryland congressional elections.
+
+First compute the party percentages in each county for each election.
+
+```{r setup, message = FALSE}
+library(tidyverse)
+library(USAboundaries)
+library(leaflet)
+library(forcats)
+library(stringr)
+
+md_raw <- read_csv("elections-data/congressional/county/congressional-counties-md.csv")
+elections <- read_csv("elections-data/elections.csv")
+
+md <- md_raw %>% 
+  mutate(party = if_else(!party %in% c("Federalist", "Republican"), "Other", party)) %>% 
+  group_by(election_id, county_ahcb) %>% 
+  mutate(county_votes = sum(vote, na.rm = TRUE)) %>% 
+  group_by(election_id, county_ahcb, party) %>% 
+  summarize(vote = sum(vote, na.rm = TRUE)) %>% 
+  group_by(election_id, county_ahcb) %>% 
+  spread(party, vote, fill = 0) %>% 
+  mutate(fed_percent = round(Federalist / (Federalist + Republican + Other), 3),
+         rep_percent = round(Republican / (Federalist + Republican + Other), 3),
+         oth_percent = round(Other / (Federalist + Republican + Other), 3),
+         fed_diff = fed_percent - 0.5) %>% 
+  left_join(elections, by = "election_id") %>% 
+  filter(election_year >= 1796, 
+         !is.na(county_ahcb)) %>%
+  arrange(election_year) 
+```
+
+Functions to make the maps repeatable.
+
+```{r}
+popup_maker <- function(county, federalist, republican, other, fed_percent,
+                        rep_percent, oth_percent) {
+  str_c("<b>County: </b>", county, "<br>",
+        "<b>Federalist: </b>", federalist, " (", fed_percent * 100, "%)<br>",
+        "<b>Republican: </b>", republican, " (", rep_percent * 100, "%)<br>",
+        "<b>Other: </b>", other, " (", oth_percent * 100, "%)<br>")
+}
+
+pal <- colorBin("PRGn", md$fed_diff, 7, pretty = TRUE)
+  
+make_md_map <- function(year) {
+  md_counties <- us_counties(map_date = str_c(year, 08, 01, sep = "-"),
+                             resolution = "high", states = "Maryland")
+  df <- md %>% 
+    filter(election_year == year) 
+  
+  md_counties@data <- md_counties@data %>% 
+    mutate(id = as.character(id)) %>% 
+    left_join(df, by = c("id" = "county_ahcb"))
+  
+  map <- leaflet(md_counties) %>% 
+    addPolygons(stroke = TRUE, weight = 1, smoothFactor = 1, fillOpacity = 1,
+                fillColor = ~pal(fed_diff), color = "black", opacity = 1,
+                popup = ~popup_maker(county = str_to_title(name),
+                                     federalist = Federalist,
+                                     republican = Republican,
+                                     other = Other,
+                                     fed_percent = fed_percent,
+                                     rep_percent = rep_percent,
+                                     oth_percent = oth_percent)) %>% 
+    addLegend("bottomright", pal = pal, values = seq(-0.5, .5, by = 0.01),
+              title = "Federalist votes", 
+              labFormat = labelFormat(suffix = "%",
+              transform = function(x) { (x + 0.5) * 100}))
+  cat("<h3> Maryland Congressional election of", year, "</h3>")
+  print(map)
+}
+```
+
+Make one map for each year.
+
+```{r, results = "asis"}
+walk(unique(md$election_year), make_md_map)
+```
+
