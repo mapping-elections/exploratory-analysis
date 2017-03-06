@@ -81,7 +81,7 @@ make_md_map <- function(year) {
 
 Make one map for each year.
 
-```{r, results = "asis"}
+```{r, results = "asis", fig.width=10}
 walk(unique(md$election_year), make_md_map)
 ```
 
