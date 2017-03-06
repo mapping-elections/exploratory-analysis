@@ -1,6 +1,8 @@
 ---
 title: "Map Maryland Congressional Elections"
-output: html_notebook
+output:
+  html_notebook: default
+  html_document: default
 ---
 
 Simple maps of party percentages in Maryland congressional elections.
@@ -68,11 +70,11 @@ make_md_map <- function(year) {
                                      fed_percent = fed_percent,
                                      rep_percent = rep_percent,
                                      oth_percent = oth_percent)) %>% 
-    addLegend("bottomright", pal = pal, values = seq(-0.5, .5, by = 0.01),
+    addLegend("bottomright", pal = pal, values = md$fed_diff,
               title = "Federalist votes", 
               labFormat = labelFormat(suffix = "%",
               transform = function(x) { (x + 0.5) * 100}))
-  cat("<h3> Maryland Congressional election of", year, "</h3>")
+  cat("<h3>Maryland Congressional election of", year, "</h3>")
   print(map)
 }
 ```
