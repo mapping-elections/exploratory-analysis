@@ -1,0 +1,130 @@
+---
+title: "MD Congressional Election of 1798"
+citation: This is the citation. It could also be generated from other metadata.
+nnv:
+- id: md.uscongress1.1798
+  name: MD US Congress 1798 District 1
+- id: md.uscongress2.1796
+  name: MD US Congress 1798 District 2
+output:
+  md_document:
+    variant: markdown
+  html_document:
+    keep_md: yes
+    lib_dir: lib
+    self_contained: no
+related-maps:
+- id: meae.congress.1796.md
+  name: MD US Congress 1796
+  type: previous
+- id: meae.congress.1800.md
+  name: MD US Congress 1800
+  type: next
+- id: meae.congress.1798
+  name: National US Congress 1798
+  type: national
+always_allow_html: yes
+---
+
+```{r setup, include=FALSE}
+# Almost all of this will go somewhere else
+library(tidyverse)
+library(USAboundaries)
+library(leaflet)
+library(forcats)
+library(stringr)
+library(knitr)
+
+md_raw <- read_csv("congressional-counties-md.csv")
+elections <- read_csv("elections.csv")
+md <- md_raw %>% 
+  mutate(party = if_else(!party %in% c("Federalist", "Republican"), "Other", party)) %>% 
+  group_by(election_id, county_ahcb) %>%  
+  mutate(county_votes = sum(vote, na.rm = TRUE)) %>% 
+  group_by(election_id, county_ahcb, party) %>% 
+  summarize(vote = sum(vote, na.rm = TRUE)) %>% 
+  group_by(election_id, county_ahcb) %>% 
+  spread(party, vote, fill = 0) %>% 
+  mutate(fed_percent = round(Federalist / (Federalist + Republican + Other), 3),
+         rep_percent = round(Republican / (Federalist + Republican + Other), 3),
+         oth_percent = round(Other / (Federalist + Republican + Other), 3),
+         fed_diff = fed_percent - 0.5) %>% 
+  left_join(elections, by = "election_id") %>% 
+  filter(election_year >= 1796, 
+         !is.na(county_ahcb)) %>% 
+  arrange(election_year) 
+
+popup_maker <- function(county, federalist, republican, other, fed_percent,
+                        rep_percent, oth_percent) {
+  str_c("<b>County: </b>", county, "<br>",
+        "<b>Federalist: </b>", federalist, " (", fed_percent * 100, "%)<br>",
+        "<b>Republican: </b>", republican, " (", rep_percent * 100, "%)<br>",
+        "<b>Other: </b>", other, " (", oth_percent * 100, "%)<br>")
+}
+pal <- colorBin("PRGn", md$fed_diff, 7, pretty = TRUE)
+  
+make_md_map <- function(year) {
+  md_counties <- us_counties(map_date = str_c(year, 08, 01, sep = "-"),
+                             resolution = "high", states = "Maryland")
+  df <- md %>% 
+    filter(election_year == year) 
+  
+  md_counties@data <- md_counties@data %>% 
+    mutate(id = as.character(id)) %>% 
+    left_join(df, by = c("id" = "county_ahcb"))
+  
+  map <- leaflet(md_counties) %>% 
+    addPolygons(stroke = TRUE, weight = 1, smoothFactor = 1, fillOpacity = 1,
+                fillColor = ~pal(fed_diff), color = "black", opacity = 1,
+                popup = ~popup_maker(county = str_to_title(name),
+                                     federalist = Federalist,
+                                     republican = Republican,
+                                     other = Other,
+                                     fed_percent = fed_percent,
+                                     rep_percent = rep_percent,
+                                     oth_percent = oth_percent)) %>% 
+    addLegend("bottomright", pal = pal, values = md$fed_diff,
+              title = "Federalist votes",
+              labFormat = labelFormat(suffix = "%",
+              transform = function(x) { (x + 0.5) * 100}))
+  map
+}
+
+```
+
+
+```{r map-itself, echo = FALSE, results = "asis"}
+make_md_map(1798)
+```
+
+```{r table, echo = FALSE}
+md_raw %>% 
+  filter(str_detect(election_id, "1798")) %>% 
+  group_by(candidate, election_id, party) %>% 
+  summarize(vote = sum(vote, na.rm = TRUE)) %>% 
+  group_by(election_id) %>% 
+  mutate(total_vote = sum(vote)) %>% 
+  mutate(percent_vote = vote / total_vote) %>% 
+  mutate(district = str_extract(election_id, "\\d")) %>% 
+  mutate(winner = vote == max(vote)) %>% 
+  top_n(3, vote) %>% 
+  arrange(district, desc(vote)) %>% 
+  mutate(percent_display = str_c(round(percent_vote * 100, 1), "%")) %>% 
+  mutate(won = if_else(winner, "won", "")) %>% 
+  ungroup() %>% 
+  select(district, candidate, party, vote, percent_display, won) %>% 
+  knitr::kable(format.args = list(big.mark = ","),
+               caption = "Contenders in MD 1798 Congressional Election",
+               col.names = c("District", "Candidate", "Party", "Vote", "Percentage",
+                             "Result"),
+               align = "cllrrc")
+```
+
+
+## About this election
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam nec orci risus. Vivamus vel venenatis velit. Nunc nulla leo, ultrices nec euismod id, fringilla ut diam. Donec rhoncus, metus non sagittis facilisis, felis lectus sagittis eros, et varius lorem augue nec odio. Quisque eget arcu sapien. Maecenas eleifend purus non leo feugiat porttitor. Praesent maximus interdum orci, ac lobortis metus porta hendrerit. Aliquam ac neque odio.
+
+Cras ut luctus dui. Pellentesque tortor neque, lacinia ut finibus et, aliquam ac dolor. In ultrices vulputate mauris, eu auctor nisl tempor sed. Phasellus sit amet dui ex. Sed bibendum mauris consectetur nisl molestie pharetra. Mauris non aliquet orci. Quisque quis mauris lorem. Vivamus aliquet laoreet elementum. Nunc in diam vestibulum mi pellentesque ultricies ut at felis. Suspendisse tristique ac mauris non eleifend. Sed velit elit, semper vel consequat facilisis, luctus ut ipsum. Praesent dictum eu magna eget tempus.
+
+
