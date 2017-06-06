@@ -1,5 +1,5 @@
 ---
-title: ''
+title: 'Maps for June 6 Meeting'
 caption: |
   This is the brief description of the contents of the map.
 congressnum: null
