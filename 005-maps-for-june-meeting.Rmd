@@ -52,7 +52,7 @@ md_5_map <- mapid$meae_id %>%
   vote_counts() %>% 
   aggregate_party_votes() %>% 
   join_to_spatial() %>% 
-  map_elections()
+  map_elections(legend = TRUE)
 md_5_map
 ```
 
