@@ -1,0 +1,100 @@
+---
+title: ''
+caption: |
+  This is the brief description of the contents of the map.
+congressnum: null
+output:
+  html_document:
+    theme: default
+  md_document:
+    variant: markdown
+legend: fed-vs-repub-percentage
+level: null
+meae-id: null
+nnv:
+- id: null
+  name: null
+geography: null
+related-maps:
+- id: null
+  name: null
+  type: previous
+- id: null
+  name: null
+  type: next
+- id: null
+  name: null
+  type: national
+state: null
+always_allow_html: yes
+type: null
+---
+
+```{r setup, include = FALSE}
+library(leaflet)
+library(tidyverse)
+library(USAboundaries)
+library(mappingelections)
+library(sf)
+
+cong <- read_sf("histcongress-lt10/histcongress-lt10.shp")
+
+cong_md_5 <- cong %>% 
+  filter(STATENAME == "Maryland")
+```
+
+Maryland's elections for the Fifth Congress.
+
+```{r echo = FALSE}
+mapid <- meae_maps %>% filter(state == "MD", congress == 5)
+
+md_5_map <- mapid$meae_id %>% 
+  vote_counts() %>% 
+  aggregate_party_votes() %>% 
+  join_to_spatial() %>% 
+  map_elections()
+md_5_map
+```
+
+Maryland's elections for the Fifth Congress with Congressional districts
+
+```{r echo = FALSE}
+md_5_map %>% 
+  addPolygons(data = cong_md_5,
+              stroke = TRUE,
+              color = "black",
+              weight = 3)
+```
+
+New York's elections for the Fifth Congress
+
+```{r election-map, echo = FALSE}
+mapid2 <- meae_maps %>% filter(state == "NY", congress == 5)
+
+mapid2$meae_id %>% 
+  vote_counts() %>% 
+  aggregate_party_votes() %>% 
+  join_to_spatial() %>% 
+  map_elections()
+```
+
+
+Multiple states for the Sixth Congress
+
+```{r echo = FALSE, warning=FALSE, fig.height=8}
+chesapeake <- meae_maps %>%
+  filter(congress == 6,
+         state %in% c("VA", "MD", "DE", "NC"))
+
+create_data <- function(x) {
+  x %>%
+    vote_counts() %>%
+    aggregate_party_votes()
+}
+
+map_data <- chesapeake$meae_id %>%
+  map_df(create_data) %>%
+  join_to_spatial()
+
+map_elections(map_data, legend = TRUE)
+```
