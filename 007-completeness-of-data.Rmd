@@ -3,6 +3,8 @@ title: "Checking completeness of data"
 output: html_notebook
 ---
 
+## Preliminary
+
 ```{r}
 suppressPackageStartupMessages(library(tidyverse))
 library(formattable)
@@ -10,12 +12,14 @@ library(formattable)
 
 Read in the relevant data
 
-```{r}
+```{r, message=FALSE}
 meae_maps <- read_csv("elections-data/maps.csv")
 meae_maps_to_elections <- read_csv("elections-data/maps-to-elections.csv")
 meae_elections <- read_csv("elections-data/elections.csv")
+meae_congress <- read_csv("elections-data/congressional-counties.csv")
 ```
 
+## Checking maps and maps-to-elections
 
 Jordan has completed the list of maps to elections. How many maps are there? These two should be equal.
 
@@ -34,6 +38,8 @@ meae_maps_to_elections %>%
   anti_join(meae_maps, by = "meae_id")
 ```
 
+## Checking completeness of maps by state and Congress
+
 Now we want to check that there contiguous runs for each state. In other words, once a state has a congression election, it should keep having the congressional elections.
 
 ```{r}
@@ -44,6 +50,8 @@ meae_maps %>%
   knitr::kable()
 ```
 
+## Checking maps-to-elections and elections
+
 Now how many elections IDs that are present in the maps-to-elections table are not present in the elections table?
 
 ```{r}
@@ -52,4 +60,44 @@ meae_maps %>%
   anti_join(meae_elections, by = "election_id") %>% 
   select(election_id, meae_id, everything())
 ```
+
+Previously there was a problem here but Jordan fixed it.
+
+## Checking how many maps have data available
+
+We will say that a map has data available if there is at least one non-zero vote recorded for that election (in the NNV sense).
+
+```{r}
+elections_present <- meae_congress %>% 
+  filter(vote > 0) %>% 
+  count(election_id)
+
+meae_maps %>% 
+  left_join(meae_maps_to_elections, by = "meae_id") %>% 
+  left_join(meae_elections, by = "election_id") %>% 
+  anti_join(elections_present, by = "election_id") %>% 
+  rename(state = state.x, congress = congress.x) %>% 
+  count(meae_id, state, congress) %>% 
+  arrange(desc(n)) %>% 
+  select(-meae_id) %>% 
+  spread(state, n, fill = "") %>% 
+  knitr::kable()
+```
+
+Now let's get a list of those missing NNV election IDs.
+
+```{r}
+elections_missing_data <- meae_maps %>% 
+  left_join(meae_maps_to_elections, by = "meae_id") %>% 
+  left_join(meae_elections, by = "election_id") %>% 
+  anti_join(elections_present, by = "election_id") %>% 
+  rename(state = state.x, congress = congress.x) %>% 
+  select(-state.y, -congress.y) %>% 
+  arrange(state, congress)
+
+elections_missing_data
+# write_csv(elections_missing_data,
+#           "~/dev/mapping-elections/data-cleaning/scripts/elections-missing-data.csv")
+```
+
 
