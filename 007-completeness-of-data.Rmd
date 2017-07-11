@@ -96,8 +96,8 @@ elections_missing_data <- meae_maps %>%
   arrange(state, congress)
 
 elections_missing_data
-# write_csv(elections_missing_data,
-#           "~/dev/mapping-elections/data-cleaning/scripts/elections-missing-data.csv")
+write_csv(elections_missing_data,
+          "~/dev/mapping-elections/data-cleaning/missing-congressional-counties/elections-missing-data.csv")
 ```
 
 
