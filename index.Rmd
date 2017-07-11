@@ -10,7 +10,7 @@ These are the exploratory notebooks for the Early American Elections project fro
 rmd <- Sys.glob("*.Rmd")
 rmd <- rmd[rmd != "index.Rmd"]
 html <- Sys.glob("*.html")
-html <- rmd[rmd != "index.html"]
+html <- html[html != "index.html"]
 lines <- lapply(rmd, readLines)
 yaml <- lapply(lines, rmarkdown:::parse_yaml_front_matter)
 cat("<ul>")
