@@ -1,0 +1,55 @@
+---
+title: "Checking completeness of data"
+output: html_notebook
+---
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+library(formattable)
+```
+
+Read in the relevant data
+
+```{r}
+meae_maps <- read_csv("elections-data/maps.csv")
+meae_maps_to_elections <- read_csv("elections-data/maps-to-elections.csv")
+meae_elections <- read_csv("elections-data/elections.csv")
+```
+
+
+Jordan has completed the list of maps to elections. How many maps are there? These two should be equal.
+
+```{r}
+meae_maps %>% nrow()
+meae_maps_to_elections %>% count(meae_id) %>% nrow()
+```
+
+Also, an anti-join of these two tables should return 0 mismatches when run in both directions.
+
+```{r}
+meae_maps %>% 
+  anti_join(meae_maps_to_elections, by = "meae_id")
+
+meae_maps_to_elections %>% 
+  anti_join(meae_maps, by = "meae_id")
+```
+
+Now we want to check that there contiguous runs for each state. In other words, once a state has a congression election, it should keep having the congressional elections.
+
+```{r}
+meae_maps %>% 
+  select(state, congress) %>% 
+  mutate(available = "✔") %>% 
+  spread(state, available, fill = "") %>% 
+  knitr::kable()
+```
+
+Now how many elections IDs that are present in the maps-to-elections table are not present in the elections table?
+
+```{r}
+meae_maps %>% 
+  left_join(meae_maps_to_elections, by = "meae_id") %>% 
+  anti_join(meae_elections, by = "election_id") %>% 
+  select(election_id, meae_id, everything())
+```
+
