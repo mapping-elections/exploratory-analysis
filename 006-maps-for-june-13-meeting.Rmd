@@ -1,0 +1,73 @@
+---
+title: 'Maps for June 6 Meeting'
+caption: |
+  This is the brief description of the contents of the map.
+congressnum: null
+output:
+  html_document:
+    theme: default
+  md_document:
+    variant: markdown
+legend: fed-vs-repub-percentage
+level: null
+meae-id: null
+nnv:
+- id: null
+  name: null
+geography: null
+related-maps:
+- id: null
+  name: null
+  type: previous
+- id: null
+  name: null
+  type: next
+- id: null
+  name: null
+  type: national
+state: null
+always_allow_html: yes
+type: null
+---
+
+```{r setup, include = FALSE}
+library(leaflet)
+library(tidyverse)
+library(USAboundaries)
+library(mappingelections)
+library(sf)
+
+md5_congress <- read_sf("shapefile-alignment/simplified/histcongress.json")
+md5_counties <- read_sf("shapefile-alignment/simplified/histcounties.json")
+```
+
+Maryland's elections for the Fifth Congress.
+
+```{r echo = FALSE}
+mapid <- meae_maps %>% filter(state == "MD", congress == 5)
+
+md5_votes <- mapid$meae_id %>% 
+  vote_counts() %>% 
+  aggregate_party_votes()
+
+md5_spatial <- left_join(md5_counties, md5_votes, by = c("ID" = "county_ahcb")) %>% 
+  mutate(map_date = as.Date("1796-11-01"))
+colnames(md5_spatial) <- tolower(colnames(md5_spatial))
+
+md5_map <- md5_spatial %>% 
+  map_elections()
+
+```
+
+Maryland's elections for the Fifth Congress with Congressional districts.
+
+```{r echo = FALSE}
+md5_map %>% 
+  addPolygons(data = md5_congress,
+              stroke = TRUE,
+              color = "black",
+              opacity = 1,
+              weight = 3,
+              fill = NULL)
+```
+
