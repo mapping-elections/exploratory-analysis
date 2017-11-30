@@ -1,0 +1,98 @@
+---
+title: "Map Maryland Congressional Elections"
+output:
+  html_notebook: default
+  html_document: default
+---
+
+```{r, include=FALSE}
+library(tidyverse)
+library(mappingelections)
+library(stringr)
+library(forcats)
+```
+
+```{r, fig.height=4.5}
+county_parties <- meae_maps %>% 
+  filter(state == "MD") %>% 
+  left_join(meae_congress_counties_parties, by = "meae_id") %>% 
+  select(congress, county_ahcb, ends_with("_percentage")) %>% 
+  gather(party, percentage, -congress, -county_ahcb) %>% 
+  mutate(party = party %>% 
+           str_replace("_percentage", "") %>% 
+           tools::toTitleCase()) %>% 
+  filter(county_ahcb != "city_annapolis",
+         congress != 2) %>% 
+  mutate(percentage = ifelse(percentage == 0, NA_real_, percentage)) %>% 
+  mutate(county_ahcb = county_ahcb %>% 
+           str_replace("mds_", "") %>% 
+           tools::toTitleCase()) %>% 
+  mutate(party = fct_collapse(party, 
+                              Antifederalist = "Antifederalist",
+                              Other = c("Chesapeake", "Potomac", "Other"),
+                              Federalist = "Federalist",
+                              Republican = "Republican"))
+
+
+ggplot(county_parties, aes(x = congress, y = percentage, color = party)) + 
+  facet_wrap(~county_ahcb, ncol = 4) + 
+  geom_line() + geom_point() +
+  theme_grey(base_size = 14) +
+  theme(legend.position = "bottom") +
+  labs(title = "Party competition by county in Maryland",
+       subtitle = "Maryland elections to the U.S. House of Representatives, 1st through 19th Congress", 
+       caption = "Mapping Early American Elections") +
+  scale_y_continuous(name = "Vote", labels = scales::percent) +
+  scale_x_continuous(name = "Congress", breaks = seq(2, 18, by = 2)) +
+  scale_color_discrete(name = "Party") 
+```
+
+```{r}
+district_parties <- meae_maps %>% 
+  filter(state == "MD") %>% 
+  left_join(meae_congress_candidate_totals, by = "meae_id") %>% 
+  group_by(congress, district, party) %>% 
+  summarize(vote = sum(vote, na.rm = TRUE)) %>% 
+  group_by(congress, district) %>% 
+  mutate(total_vote = sum(vote, na.rm = TRUE),
+         percentage = vote / total_vote) %>% 
+  filter(district != "At-large",
+         congress > 3)
+
+ggplot(district_parties, aes(x = congress, y = percentage, color = party)) + 
+  facet_wrap(~district) + 
+  geom_point() + geom_line() + 
+  theme_gray(base_size = 14) +
+  theme(legend.position = "bottom") +
+  labs(title = "Party competition by district in Maryland",
+       subtitle = "Maryland elections to the U.S. House of Representatives, 3rd through 19th Congress", 
+       caption = "Mapping Early American Elections") +
+  scale_y_continuous(name = "Vote", labels = scales::percent) +
+  scale_x_continuous(name = "Congress", breaks = seq(4, 18, by = 2)) +
+  scale_color_discrete(name = "Party")
+```
+
+```{r}
+meae_maps %>% 
+  filter(state == "MD") %>% 
+  left_join(meae_congress_candidate_totals, by = "meae_id") %>% 
+  filter(winner) %>% 
+  count(congress, party) %>% 
+  ggplot(aes(x = congress, y = n, color = party)) + 
+  geom_line() + geom_point() +
+  theme_grey(base_size = 14) +
+  labs(title = "Representatives by party in Maryland",
+       subtitle = "Maryland elections to the U.S. House of Representatives, 1st through 19th Congress",
+       caption = "Mapping Early American Elections") +
+  scale_y_continuous(name = "Elected", breaks = 1:8, limits = c(0, 8)) +
+  scale_x_continuous(name = "Congress", breaks = seq(2, 18, by = 2)) +
+  scale_color_discrete(name = "Party") +
+  theme(legend.position = "bottom")
+
+
+  # scale_color_manual(name = "Party",
+  #                    values = c("Federalist" = "green",
+  #                               "Republican" = "purple",
+  #                               "Anti-Federalist" = "orange"))
+```
+
